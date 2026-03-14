@@ -1,4 +1,4 @@
-# Next.js template
+# RaceGroup
 
 This is a Next.js template with shadcn/ui.
 

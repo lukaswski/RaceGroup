@@ -1,18 +1,19 @@
-import { Geist, Geist_Mono, Roboto_Slab } from "next/font/google"
+import { Roboto, Roboto_Mono } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const robotoSlab = Roboto_Slab({subsets:['latin'],variable:'--font-serif'});
-
-const fontSans = Geist({
-  subsets: ["latin"],
+const roboto = Roboto({
+  subsets: ["latin", "latin-ext"],
+  weight: ["300", "400", "500", "700"],
   variable: "--font-sans",
 })
 
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
+export const viewport = { width: "device-width", initialScale: 1 }
+
+const robotoMono = Roboto_Mono({
+  subsets: ["latin", "latin-ext"],
   variable: "--font-mono",
 })
 
@@ -25,7 +26,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontSans.variable, fontMono.variable, "font-serif", robotoSlab.variable)}
+      className={cn("antialiased", roboto.variable, robotoMono.variable, "font-sans")}
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>
