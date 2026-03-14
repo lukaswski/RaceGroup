@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Motorcycle className="size-7 shrink-0 text-primary" weight="duotone" />
           {!isSidebarCollapsed && (
             <Link href="/dashboard" className="font-semibold tracking-tight hover:text-primary">
-              MotoGroup
+              Race Group
             </Link>
           )}
         </div>
