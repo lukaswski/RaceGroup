@@ -110,42 +110,47 @@ export default function NoweWydarzeniePage() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl rounded-lg border border-border bg-card">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-4 sm:p-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <label htmlFor="nazwa" className={labelClass}>
-                  Nazwa wydarzenia
-                </label>
-                <input
-                  id="nazwa"
-                  type="text"
-                  value={nazwa}
-                  onChange={(e) => setNazwa(e.target.value)}
-                  placeholder="np. Track Day Stary Kisielin"
-                  className={inputClass}
-                />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-4 sm:p-6">
+            <section className="grid gap-4 rounded-lg bg-muted/30 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-foreground">Podstawowe informacje</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label htmlFor="nazwa" className={labelClass}>
+                    Nazwa wydarzenia
+                  </label>
+                  <input
+                    id="nazwa"
+                    type="text"
+                    value={nazwa}
+                    onChange={(e) => setNazwa(e.target.value)}
+                    placeholder="np. Track Day Stary Kisielin"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label htmlFor="lokalizacja" className={labelClass}>
+                    Lokalizacja
+                  </label>
+                  <select
+                    id="lokalizacja"
+                    value={lokalizacja}
+                    onChange={(e) => setLokalizacja(e.target.value)}
+                    className={selectClass}
+                  >
+                    <option value="">Wybierz lokalizację</option>
+                    {LOKALIZACJE.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="grid gap-2">
-                <label htmlFor="lokalizacja" className={labelClass}>
-                  Lokalizacja
-                </label>
-                <select
-                  id="lokalizacja"
-                  value={lokalizacja}
-                  onChange={(e) => setLokalizacja(e.target.value)}
-                  className={selectClass}
-                >
-                  <option value="">Wybierz lokalizację</option>
-                  {LOKALIZACJE.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            </section>
 
-            <div className="grid gap-3">
+            <section className="grid gap-3 rounded-lg bg-muted/20 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-foreground">Terminy i cena</h2>
+              <div className="grid gap-3">
               <div className="flex items-center gap-3">
                 <Switch
                   checked={wydarzenieKilkuDnioweChecked}
@@ -280,8 +285,11 @@ export default function NoweWydarzeniePage() {
                 />
               </div>
             )}
+            </section>
 
-            <div className="grid gap-3">
+            <section className="grid gap-3 rounded-lg bg-muted/20 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-foreground">Uczestnicy</h2>
+              <div className="grid gap-3">
               <div className="flex items-center gap-3">
                 <Switch
                   checked={podzialNaGrupyChecked}
@@ -366,7 +374,7 @@ export default function NoweWydarzeniePage() {
                 </div>
               )}
               {!podzialNaGrupyChecked && (
-                <div className="grid gap-2">
+                <div className="grid gap-2 max-w-md">
                   <label htmlFor="max-uczestnicy" className={labelClass}>
                     Maks. uczestnicy
                   </label>
@@ -381,8 +389,11 @@ export default function NoweWydarzeniePage() {
                 </div>
               )}
             </div>
+            </section>
 
-            <div className="grid gap-2">
+            <section className="grid gap-3 rounded-lg bg-muted/20 p-4 sm:p-5">
+              <h2 className="text-sm font-semibold text-foreground">Wynajmy</h2>
+              <div className="grid gap-2 max-w-md">
               <label htmlFor="max-wynajmuje" className={labelClass}>
                 Maks. wynajmuje
               </label>
@@ -434,6 +445,7 @@ export default function NoweWydarzeniePage() {
                 </div>
               )}
             </div>
+            </section>
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
               <Button
