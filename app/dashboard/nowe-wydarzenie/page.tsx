@@ -108,8 +108,8 @@ export default function NoweWydarzeniePage() {
           Powrót do listy
         </Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
-        <div className="min-w-[640px] rounded-lg border border-border bg-card">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl rounded-lg border border-border bg-card">
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 p-4 sm:p-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
@@ -295,7 +295,7 @@ export default function NoweWydarzeniePage() {
               </div>
               {podzialNaGrupyChecked && (
                 <div className="grid gap-3">
-                  <div className="max-w-md rounded-lg border border-input bg-muted/20 p-4 space-y-4">
+                  <div className="rounded-lg border border-input bg-muted/20 p-4 space-y-4">
                     {grupy.map((g, i) => (
                       <div
                         key={i}
@@ -406,7 +406,7 @@ export default function NoweWydarzeniePage() {
               </div>
               {wynajemMotocykliChecked && (
                 <div className="grid gap-2">
-                  <div className="max-w-md rounded-lg border border-input bg-muted/20 p-3">
+                  <div className="rounded-lg border border-input bg-muted/20 p-3">
                     <div className="flex flex-wrap gap-2">
                       {MOTOCYKLE_DO_WYNAJECIA.map((m) => {
                         const checked = motocykle.includes(m.id)

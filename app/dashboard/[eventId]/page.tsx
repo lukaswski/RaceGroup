@@ -405,7 +405,7 @@ export default function EventParticipantsPage() {
                       </tbody>
                     </table>
                     </div>
-                    <div className="flex flex-col gap-2 p-2 md:hidden">
+                    <div className="flex flex-col gap-2 p-3 md:hidden">
                       {groupParticipants.map((p, idx) => (
                         <div
                           key={p.id}

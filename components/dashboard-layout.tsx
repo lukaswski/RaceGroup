@@ -144,10 +144,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <List className="size-5" weight="bold" />
             </Button>
-            <div className="flex min-w-0 flex-1 flex-col justify-center truncate">
-              <span className="truncate text-sm font-medium text-foreground">Witaj, Marek</span>
-              <span className="hidden truncate text-xs text-muted-foreground sm:block">Co gdzie dziś jeździmy</span>
-            </div>
           </div>
           <div className="flex h-6 w-[72px] items-center gap-2" suppressHydrationWarning>
             {mounted && (
