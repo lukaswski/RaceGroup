@@ -1,18 +1,31 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { useRouter } from "next/navigation"
-import { CaretRight, Check, Link as LinkIcon, Plus, X } from "@phosphor-icons/react"
+import { CaretRight, CaretDown, Check, Link as LinkIcon, Plus, X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import eventsData from "@/data/events.json"
+
+type EventWithDays = (typeof eventsData)[0] & {
+  days?: Array<{
+    label: string
+    date: string
+    participants: number
+    paid: number
+    cash: number
+    wynajmuje: number
+    listaRezerwowa: number
+  }>
+}
 
 export default function DashboardEventsPage() {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
   const [linkModalEvent, setLinkModalEvent] = useState<{ name: string; url: string } | null>(null)
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
 
-  const openLinkModal = (e: React.MouseEvent, event: (typeof eventsData)[0]) => {
+  const openLinkModal = (e: React.MouseEvent, event: EventWithDays) => {
     e.stopPropagation()
     const url = (event as { formularzRejestracyjny?: string }).formularzRejestracyjny
     if (url) setLinkModalEvent({ name: event.name, url })
@@ -32,6 +45,21 @@ export default function DashboardEventsPage() {
     } catch {
       setCopied(false)
     }
+  }
+
+  const toggleExpand = (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation()
+    setExpandedEventId((prev) => (prev === eventId ? null : eventId))
+  }
+
+  const goToFullEvent = (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation()
+    router.push(`/dashboard/${eventId}`)
+  }
+
+  const goToDayEvent = (e: React.MouseEvent, eventId: string, dayIndex: number) => {
+    e.stopPropagation()
+    router.push(`/dashboard/${eventId}?dzien=${dayIndex + 1}`)
   }
 
   return (
@@ -107,83 +135,169 @@ export default function DashboardEventsPage() {
           <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="w-[18%] px-4 py-3 text-left font-medium">Wydarzenie</th>
-                <th className="w-[10%] px-4 py-3 text-left font-medium">Data</th>
-                <th className="w-[10%] px-4 py-3 text-left font-medium">Uczestnicy</th>
-                <th className="w-[10%] px-4 py-3 text-left font-medium">Opłacone</th>
-                <th className="w-[10%] px-4 py-3 text-left font-medium">Gotówka</th>
-                <th className="w-[10%] px-4 py-3 text-left font-medium">Wynajmy</th>
-                <th className="w-[8%] px-4 py-3 text-left font-medium">Rezerwa</th>
-                <th className="w-[24%] px-4 py-3 text-right" />
+                <th className="w-[4%] px-1 py-1.5" />
+                <th className="w-[14%] px-3 py-1.5 text-left font-medium">Wydarzenie</th>
+                <th className="w-[10%] px-3 py-1.5 text-left font-medium">Data</th>
+                <th className="w-[10%] px-3 py-1.5 text-left font-medium">Uczestnicy</th>
+                <th className="w-[10%] px-3 py-1.5 text-left font-medium">Opłacone</th>
+                <th className="w-[10%] px-3 py-1.5 text-left font-medium">Gotówka</th>
+                <th className="w-[10%] px-3 py-1.5 text-left font-medium">Wynajmy</th>
+                <th className="w-[8%] px-3 py-1.5 text-left font-medium">Rezerwa</th>
+                <th className="w-[24%] px-3 py-1.5 text-right" />
               </tr>
             </thead>
             <tbody>
-              {eventsData.map((event) => (
-                <tr
-                  key={event.id}
-                  onClick={() => router.push(`/dashboard/${event.id}`)}
-                  className="group cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
-                >
-                  <td className="px-4 py-3">
-                    <span className="block truncate font-medium">{event.name}</span>
-                  </td>
-                  <td className="truncate px-4 py-3 text-muted-foreground">{event.date}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {event.participants}/{event.maxCapacity ?? 80}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      {event.paid ?? 0}/{event.maxCapacity ?? 80}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-lg bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
-                      {event.cash ?? 0}/{event.maxCapacity ?? 80}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      {event.wynajmuje ?? 0}/{event.maxWynajmuje ?? 10}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-muted-foreground">
-                      {(event.listaRezerwowa ?? 0) > 0
-                        ? (event.listaRezerwowa ?? 0)
-                        : "–"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {(event as { formularzRejestracyjny?: string }).formularzRejestracyjny ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => openLinkModal(e, event)}
-                        >
-                          link rej.
-                          <LinkIcon className="size-4" weight="bold" />
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">–</span>
+              {(eventsData as EventWithDays[]).map((event) => {
+                const isExpanded = expandedEventId === event.id
+                const days = event.days ?? []
+                return (
+                  <Fragment key={event.id}>
+                    <tr
+                      onClick={(e) => toggleExpand(e, event.id)}
+                      className={cn(
+                        "group cursor-pointer border-b border-border transition-colors even:bg-muted/40 hover:bg-muted/50",
+                        isExpanded && "bg-muted/30"
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          router.push(`/dashboard/${event.id}`)
-                        }}
-                      >
-                        Wyświetl
-                        <CaretRight className="size-4" weight="bold" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    >
+                      <td className="px-1 py-1.5">
+                        <span className="inline-flex text-muted-foreground">
+                          {isExpanded ? (
+                            <CaretDown className="size-4" weight="bold" />
+                          ) : (
+                            <CaretRight className="size-4" weight="bold" />
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className="block truncate font-medium">{event.name}</span>
+                      </td>
+                      <td className="truncate px-3 py-1.5 text-muted-foreground">{event.date}</td>
+                      <td className="px-3 py-1.5">
+                        <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                          {event.participants}/{event.maxCapacity ?? 80}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className="rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          {event.paid ?? 0}/{event.maxCapacity ?? 80}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className="rounded-lg bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+                          {event.cash ?? 0}/{event.maxCapacity ?? 80}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                          {event.wynajmuje ?? 0}/{event.maxWynajmuje ?? 10}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className="text-muted-foreground">
+                          {(event.listaRezerwowa ?? 0) > 0 ? (event.listaRezerwowa ?? 0) : "–"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {(event as { formularzRejestracyjny?: string }).formularzRejestracyjny ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => openLinkModal(e, event)}
+                            >
+                              link rej.
+                              <LinkIcon className="size-4" weight="bold" />
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground">–</span>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => goToFullEvent(e, event.id)}
+                          >
+                            Wyświetl
+                            <CaretRight className="size-4" weight="bold" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && days.length > 0 && (
+                      <tr key={`${event.id}-expand`}>
+                        <td colSpan={9} className="p-0 align-top">
+                          <div className="border-t border-border bg-muted/5">
+                            <div className="ml-5 mr-2 border-l border-border py-2 pl-4 pr-2">
+                              <table className="w-full table-fixed text-sm">
+                                <colgroup>
+                                  <col className="w-[4%]" />
+                                  <col className="w-[14%]" />
+                                  <col className="w-[10%]" />
+                                  <col className="w-[10%]" />
+                                  <col className="w-[10%]" />
+                                  <col className="w-[10%]" />
+                                  <col className="w-[10%]" />
+                                  <col className="w-[8%]" />
+                                  <col className="w-[24%]" />
+                                </colgroup>
+                                <tbody>
+                                  {days.map((day, dayIndex) => (
+                                    <tr
+                                      key={dayIndex}
+                                      onClick={() => router.push(`/dashboard/${event.id}?dzien=${dayIndex + 1}`)}
+                                      className="cursor-pointer border-b border-border/60 last:border-0 even:bg-muted/10 hover:bg-muted/20 transition-colors"
+                                    >
+                                      <td className="w-[4%] px-1 py-1.5" />
+                                      <td className="w-[14%] px-3 py-1.5 font-medium text-muted-foreground">
+                                        {day.label}
+                                      </td>
+                                      <td className="w-[10%] px-3 py-1.5 text-muted-foreground">{day.date}</td>
+                                      <td className="w-[10%] px-3 py-1.5">
+                                        <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                          {day.participants}/{event.maxCapacity ?? 80}
+                                        </span>
+                                      </td>
+                                      <td className="w-[10%] px-3 py-1.5">
+                                        <span className="rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                                          {day.paid}/{event.maxCapacity ?? 80}
+                                        </span>
+                                      </td>
+                                      <td className="w-[10%] px-3 py-1.5">
+                                        <span className="rounded-lg bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+                                          {day.cash}/{event.maxCapacity ?? 80}
+                                        </span>
+                                      </td>
+                                      <td className="w-[10%] px-3 py-1.5">
+                                        <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                          {day.wynajmuje}/{event.maxWynajmuje ?? 10}
+                                        </span>
+                                      </td>
+                                      <td className="w-[8%] px-3 py-1.5">
+                                        <span className="text-muted-foreground">
+                                          {day.listaRezerwowa > 0 ? day.listaRezerwowa : "–"}
+                                        </span>
+                                      </td>
+                                      <td className="w-[24%] px-3 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={(e) => goToDayEvent(e, event.id, dayIndex)}
+                                        >
+                                          Wyświetl
+                                          <CaretRight className="size-4" weight="bold" />
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

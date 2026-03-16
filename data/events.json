@@ -1,7 +1,97 @@
 [
-  { "id": "1", "name": "Track Day Stary Kisielin", "date": "22.05.2026", "participants": 40, "maxCapacity": 80, "paid": 32, "cash": 8, "oswiadczenia": 35, "wynajmuje": 6, "maxWynajmuje": 10, "listaRezerwowa": 0, "formularzRejestracyjny": "https://forms.example.com/stary-kisielin" },
-  { "id": "2", "name": "Track Day Tor Poznań", "date": "12.06.2026", "participants": 80, "maxCapacity": 80, "paid": 72, "cash": 8, "oswiadczenia": 75, "wynajmuje": 6, "maxWynajmuje": 8, "listaRezerwowa": 3, "formularzRejestracyjny": "https://forms.example.com/poznan" },
-  { "id": "3", "name": "Track Day Autodrom Śląsk", "date": "03.07.2026", "participants": 28, "maxCapacity": 60, "paid": 22, "cash": 6, "oswiadczenia": 24, "wynajmuje": 5, "maxWynajmuje": 8, "listaRezerwowa": 0, "formularzRejestracyjny": "https://forms.example.com/autodrom-slask" },
-  { "id": "4", "name": "Track Day Tor Łódź", "date": "18.07.2026", "participants": 24, "maxCapacity": 60, "paid": 18, "cash": 6, "oswiadczenia": 20, "wynajmuje": 3, "maxWynajmuje": 6, "listaRezerwowa": 0, "formularzRejestracyjny": "https://forms.example.com/lodz" },
-  { "id": "5", "name": "Track Day Tor Zielona Góra", "date": "01.08.2026", "participants": 20, "maxCapacity": 40, "paid": 16, "cash": 4, "oswiadczenia": 18, "wynajmuje": 2, "maxWynajmuje": 5, "listaRezerwowa": 0, "formularzRejestracyjny": "https://forms.example.com/zielona-gora" }
+  {
+    "id": "1",
+    "name": "Stary Kisielin",
+    "date": "22.05-24.05",
+    "participants": 40,
+    "maxCapacity": 80,
+    "paid": 32,
+    "cash": 8,
+    "oswiadczenia": 35,
+    "wynajmuje": 6,
+    "maxWynajmuje": 10,
+    "listaRezerwowa": 0,
+    "formularzRejestracyjny": "https://forms.example.com/stary-kisielin",
+    "days": [
+      { "label": "Dzień 1", "date": "22.05", "participants": 14, "paid": 11, "cash": 3, "wynajmuje": 2, "listaRezerwowa": 0 },
+      { "label": "Dzień 2", "date": "23.05", "participants": 13, "paid": 10, "cash": 3, "wynajmuje": 2, "listaRezerwowa": 0 },
+      { "label": "Dzień 3", "date": "24.05", "participants": 13, "paid": 11, "cash": 2, "wynajmuje": 2, "listaRezerwowa": 0 }
+    ]
+  },
+  {
+    "id": "2",
+    "name": "Tor Poznań",
+    "date": "12.06-14.06",
+    "participants": 80,
+    "maxCapacity": 80,
+    "paid": 72,
+    "cash": 8,
+    "oswiadczenia": 75,
+    "wynajmuje": 6,
+    "maxWynajmuje": 8,
+    "listaRezerwowa": 3,
+    "formularzRejestracyjny": "https://forms.example.com/poznan",
+    "days": [
+      { "label": "Dzień 1", "date": "12.06", "participants": 27, "paid": 24, "cash": 3, "wynajmuje": 2, "listaRezerwowa": 1 },
+      { "label": "Dzień 2", "date": "13.06", "participants": 27, "paid": 24, "cash": 3, "wynajmuje": 2, "listaRezerwowa": 1 },
+      { "label": "Dzień 3", "date": "14.06", "participants": 26, "paid": 24, "cash": 2, "wynajmuje": 2, "listaRezerwowa": 1 }
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Autodrom Śląsk",
+    "date": "03.07-05.07",
+    "participants": 28,
+    "maxCapacity": 60,
+    "paid": 22,
+    "cash": 6,
+    "oswiadczenia": 24,
+    "wynajmuje": 5,
+    "maxWynajmuje": 8,
+    "listaRezerwowa": 0,
+    "formularzRejestracyjny": "https://forms.example.com/autodrom-slask",
+    "days": [
+      { "label": "Dzień 1", "date": "03.07", "participants": 10, "paid": 8, "cash": 2, "wynajmuje": 2, "listaRezerwowa": 0 },
+      { "label": "Dzień 2", "date": "04.07", "participants": 9, "paid": 7, "cash": 2, "wynajmuje": 1, "listaRezerwowa": 0 },
+      { "label": "Dzień 3", "date": "05.07", "participants": 9, "paid": 7, "cash": 2, "wynajmuje": 2, "listaRezerwowa": 0 }
+    ]
+  },
+  {
+    "id": "4",
+    "name": "Tor Łódź",
+    "date": "18.07-20.07",
+    "participants": 24,
+    "maxCapacity": 60,
+    "paid": 18,
+    "cash": 6,
+    "oswiadczenia": 20,
+    "wynajmuje": 3,
+    "maxWynajmuje": 6,
+    "listaRezerwowa": 0,
+    "formularzRejestracyjny": "https://forms.example.com/lodz",
+    "days": [
+      { "label": "Dzień 1", "date": "18.07", "participants": 8, "paid": 6, "cash": 2, "wynajmuje": 1, "listaRezerwowa": 0 },
+      { "label": "Dzień 2", "date": "19.07", "participants": 8, "paid": 6, "cash": 2, "wynajmuje": 1, "listaRezerwowa": 0 },
+      { "label": "Dzień 3", "date": "20.07", "participants": 8, "paid": 6, "cash": 2, "wynajmuje": 1, "listaRezerwowa": 0 }
+    ]
+  },
+  {
+    "id": "5",
+    "name": "Tor Zielona Góra",
+    "date": "01.08-03.08",
+    "participants": 20,
+    "maxCapacity": 40,
+    "paid": 16,
+    "cash": 4,
+    "oswiadczenia": 18,
+    "wynajmuje": 2,
+    "maxWynajmuje": 5,
+    "listaRezerwowa": 0,
+    "formularzRejestracyjny": "https://forms.example.com/zielona-gora",
+    "days": [
+      { "label": "Dzień 1", "date": "01.08", "participants": 7, "paid": 6, "cash": 1, "wynajmuje": 1, "listaRezerwowa": 0 },
+      { "label": "Dzień 2", "date": "02.08", "participants": 7, "paid": 5, "cash": 2, "wynajmuje": 0, "listaRezerwowa": 0 },
+      { "label": "Dzień 3", "date": "03.08", "participants": 6, "paid": 5, "cash": 1, "wynajmuje": 1, "listaRezerwowa": 0 }
+    ]
+  }
 ]

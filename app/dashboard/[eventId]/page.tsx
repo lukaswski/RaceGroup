@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { useParams, useSearchParams } from "next/navigation"
 import {
   IdentificationCard,
   Motorcycle,
@@ -12,6 +13,8 @@ import {
   CaretLeft,
   CaretRight,
   PencilSimple,
+  CurrencyCircleDollar,
+  ArrowLeft,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -19,6 +22,9 @@ import participantsData from "@/data/participants.json"
 import participantsByEvent from "@/data/participants-by-event.json"
 import eventsData from "@/data/events.json"
 
+type EventWithDays = (typeof eventsData)[0] & {
+  days?: Array<{ label: string; date: string }>
+}
 type ParticipantStatus = "opłacony" | "oczekuje" | "gotówka" | "zaliczka"
 
 const GROUPS = ["A", "B", "C", "D", "listaRezerwowa"] as const
@@ -32,16 +38,26 @@ const GROUP_LABELS: Record<string, string> = {
 
 export default function EventParticipantsPage() {
   const params = useParams()
-  const router = useRouter()
+  const searchParams = useSearchParams()
   const eventId = params.eventId as string
-  const event = eventsData.find((e) => e.id === eventId)
+  const event = eventsData.find((e) => e.id === eventId) as EventWithDays | undefined
+  const dzienParam = searchParams.get("dzien")
+  const dayIndex = dzienParam ? Math.max(0, parseInt(dzienParam, 10) - 1) : null
+  const eventDays = event?.days ?? []
+  const daysToShow =
+    dayIndex !== null && eventDays[dayIndex]
+      ? [eventDays[dayIndex]]
+      : eventDays.length > 0
+        ? eventDays
+        : [{ label: "Dzień 1", date: (event?.date as string)?.split("-")[0]?.trim() ?? "–" }]
 
   const eventParticipants = (participantsByEvent as Record<string, Array<typeof participantsData[0]>>)[eventId]
   const participants = eventParticipants ?? participantsData
 
   const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null)
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(GROUPS))
+  // Klucze "dayIdx-group" – rozwinięta grupa tylko dla danego dnia
+  const [expandedGroupsByDay, setExpandedGroupsByDay] = useState<Set<string>>(new Set())
   const [groupOverrides, setGroupOverrides] = useState<Record<string, string>>({})
 
   const getEffectiveGroup = (p: (typeof participants)[0]) => groupOverrides[p.id] ?? p.group
@@ -55,6 +71,18 @@ export default function EventParticipantsPage() {
 
   const openDrawer = (participantId: string) => setSelectedParticipantId(participantId)
   const closeDrawer = () => setSelectedParticipantId(null)
+
+  const eventTotalDays = Math.max(eventDays.length, 1)
+  const getObecnosc = (p: (typeof participants)[0]) => {
+    const dni = (p as { dniObecnosci?: number }).dniObecnosci ?? eventTotalDays
+    return `${Math.min(dni, eventTotalDays)}/${eventTotalDays}`
+  }
+  const isPresentOnDay = (p: (typeof participants)[0], eventDayIndex: number) => {
+    const obecnyWDniach = (p as { obecnyWDniach?: number[] }).obecnyWDniach
+    const dni = (p as { dniObecnosci?: number }).dniObecnosci ?? eventTotalDays
+    if (obecnyWDniach && obecnyWDniach.length > 0) return obecnyWDniach.includes(eventDayIndex)
+    return eventDayIndex < dni
+  }
 
   const getStatusStyles = (status: ParticipantStatus) => {
     switch (status) {
@@ -71,6 +99,71 @@ export default function EventParticipantsPage() {
     }
   }
 
+  const exportToExcel = () => {
+    if (!event) return
+    const visibleParticipants = participantsWithGroup.filter((p) =>
+      daysToShow.some((_, dayIdx) =>
+        isPresentOnDay(p, dayIndex !== null ? dayIndex : dayIdx)
+      )
+    )
+    const groupOrder = (g: string) => {
+      const i = GROUPS.indexOf(g as (typeof GROUPS)[number])
+      return i >= 0 ? i : 999
+    }
+    const sortedByGroup = [...visibleParticipants].sort((a, b) => {
+      const ga = getEffectiveGroup(a)
+      const gb = getEffectiveGroup(b)
+      if (groupOrder(ga) !== groupOrder(gb))
+        return groupOrder(ga) - groupOrder(gb)
+      return (a.surname ?? "").localeCompare(b.surname ?? "", "pl")
+    })
+    const escapeCsv = (v: string) => {
+      const s = String(v ?? "")
+      if (/[,"\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+      return s
+    }
+    const headers = [
+      "Grupa",
+      "Imię",
+      "Nazwisko",
+      "Email",
+      "Telefon",
+      "Motocykl",
+      "Status",
+      "Podpis",
+    ]
+    const rowForParticipant = (p: (typeof visibleParticipants)[0]) => [
+      GROUP_LABELS[getEffectiveGroup(p)] ?? p.group,
+      p.name,
+      p.surname,
+      (p as { email?: string }).email ?? "",
+      (p as { phone?: string }).phone ?? "",
+      (p as { rentsMotorcycle?: boolean }).rentsMotorcycle ? "" : p.motorcycle ?? "",
+      p.status ?? "",
+      "",
+    ]
+    const rows: string[][] = []
+    let lastGroup: string | null = null
+    for (const p of sortedByGroup) {
+      const g = getEffectiveGroup(p)
+      if (g !== lastGroup) {
+        lastGroup = g
+        rows.push([GROUP_LABELS[g] ?? g, "", "", "", "", "", "", ""])
+      }
+      rows.push(rowForParticipant(p))
+    }
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(","), ...rows.map((r) => r.map(escapeCsv).join(","))].join("\r\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${event.name.replace(/\s+/g, "-")}-uczestnicy.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (!event) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center p-8 text-muted-foreground">
@@ -82,6 +175,13 @@ export default function EventParticipantsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
       <div className="mb-4 flex shrink-0 flex-col gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex w-fit items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" weight="bold" />
+          Cofnij
+        </Link>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-2">
             <h1 className="truncate text-base font-semibold sm:text-lg">{event.name}</h1>
@@ -102,54 +202,103 @@ export default function EventParticipantsPage() {
           </div>
           <div className="flex flex-col items-end gap-2 sm:pl-4">
             <span className="text-sm text-muted-foreground">{event.date}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-fit shrink-0"
-              onClick={() => {}}
-            >
-              <PencilSimple className="size-4" weight="bold" />
-              Edytuj wydarzenie
-            </Button>
+            {dayIndex !== null && (
+              <Link
+                href={`/dashboard/${eventId}`}
+                className="text-xs text-primary underline hover:no-underline"
+              >
+                Pokaż wszystkie dni
+              </Link>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-fit shrink-0"
+                onClick={() => {}}
+              >
+                <PencilSimple className="size-4" weight="bold" />
+                Edytuj wydarzenie
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-fit shrink-0"
+                onClick={exportToExcel}
+              >
+                Pobierz do pliku Excel
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-        <div className="min-w-0 flex-1 space-y-4 overflow-auto lg:space-y-6">
-          {GROUPS.map((group) => {
-            const groupParticipants = participantsWithGroup.filter((p) => p.effectiveGroup === group)
-            const isCollapsed = collapsedGroups.has(group)
-            const toggleGroup = () => {
-              setCollapsedGroups((prev) => {
-                const next = new Set(prev)
-                if (next.has(group)) next.delete(group)
-                else next.add(group)
-                return next
-              })
-            }
-            const isListaRezerwowa = group === "listaRezerwowa"
-            const maxPerGroup = isListaRezerwowa ? null : 20
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="min-w-0 flex-1 space-y-4 overflow-auto lg:space-y-5 lg:min-h-0">
+          {daysToShow.map((day, dayIdx) => {
+            const currentEventDayIndex = dayIndex !== null ? dayIndex : dayIdx
             return (
-              <div key={group} className="rounded-lg border border-border bg-card">
+            <div key={dayIdx} className="space-y-2 lg:space-y-3">
+              <h2 className="sticky top-0 z-10 bg-background/95 py-1 text-sm font-semibold text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                Dzień {dayIdx + 1} – {day.date}
+              </h2>
+              {GROUPS.map((group) => {
+                const groupParticipants = participantsWithGroup.filter(
+                  (p) => p.effectiveGroup === group && isPresentOnDay(p, currentEventDayIndex)
+                )
+                const dayGroupKey = `${dayIdx}-${group}`
+                const isCollapsed = !expandedGroupsByDay.has(dayGroupKey)
+                const isSelectedParticipantHere =
+                  !isCollapsed
+                    ? false
+                    : selectedParticipantId &&
+                      selectedParticipant &&
+                      getEffectiveGroup(selectedParticipant) === group &&
+                      isPresentOnDay(selectedParticipant, currentEventDayIndex)
+                const toggleGroup = () => {
+                  setExpandedGroupsByDay((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(dayGroupKey)) next.delete(dayGroupKey)
+                    else next.add(dayGroupKey)
+                    return next
+                  })
+                }
+                const isListaRezerwowa = group === "listaRezerwowa"
+                const maxPerGroup = isListaRezerwowa ? null : 20
+                const wynajmujeInGroup = groupParticipants.filter(
+                  (p) => (p as { rentsMotorcycle?: boolean }).rentsMotorcycle
+                ).length
+                return (
+                  <div
+                    key={dayGroupKey}
+                    className={cn(
+                      "rounded-lg border border-border bg-card",
+                      isSelectedParticipantHere && "border-l-4 border-l-primary"
+                    )}
+                  >
                 <button
                   type="button"
                   onClick={toggleGroup}
                   className="flex w-full cursor-pointer items-center justify-between border-b border-border bg-muted/50 px-4 py-2.5 text-left transition-colors hover:bg-muted/70"
                   title={isCollapsed ? "Rozwiń tabelę" : "Zwiń tabelę"}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold">{GROUP_LABELS[group] ?? `Grupa ${group}`}</h3>
                     <span className={cn(
                       "rounded-lg px-2 py-0.5 text-xs font-medium",
                       isListaRezerwowa
-                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                        ? "bg-teal-500/15 text-teal-700 dark:text-teal-400"
                         : "bg-primary/10 text-primary"
                     )}>
                       {isListaRezerwowa
                         ? `${groupParticipants.length} oczekujących`
                         : `${groupParticipants.length} / ${maxPerGroup}`}
                     </span>
+                    {wynajmujeInGroup > 0 && (
+                      <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                        {wynajmujeInGroup}
+                      </span>
+                    )}
                   </div>
                   {isCollapsed ? (
                     <CaretRight className="size-4 shrink-0 text-muted-foreground" />
@@ -160,35 +309,44 @@ export default function EventParticipantsPage() {
                 {!isCollapsed && (
                   <>
                     <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[600px] table-fixed text-sm">
+                    <table className="w-full min-w-[560px] table-fixed text-sm">
                       <thead>
                         <tr className="border-b border-border bg-muted/30">
-                          <th className="w-[22%] px-4 py-3 text-left font-medium">Uczestnik</th>
-                          <th className="w-[22%] px-4 py-3 text-left font-medium">Motocykl</th>
-                          <th className="w-[12%] px-4 py-3 text-left font-medium">Pojemność</th>
-                          <th className="w-[14%] px-4 py-3 text-left font-medium">Status</th>
-                          <th className="w-[14%] px-4 py-3 text-left font-medium">Oświadczenia</th>
-                          <th className="w-[16%] px-4 py-3" />
+                          <th className="w-[6%] px-2 py-2 text-left font-medium">Lp.</th>
+                          <th className="w-[26%] px-3 py-2 text-left font-medium">Uczestnik</th>
+                          <th className="w-[26%] px-3 py-2 text-left font-medium">Motocykl</th>
+                          <th className="w-[16%] px-3 py-2 text-left font-medium">Status</th>
+                          <th className="w-[26%] px-3 py-2" />
                         </tr>
                       </thead>
                       <tbody>
-                        {groupParticipants.map((p) => (
+                        {groupParticipants.map((p, idx) => (
                           <tr
                             key={p.id}
                             onClick={() => openDrawer(p.id)}
                             className={cn(
                               "cursor-pointer border-b border-border last:border-0 transition-colors",
                               selectedParticipantId === p.id
-                                ? "bg-primary/5"
-                                : "hover:bg-muted/50"
+                                ? "bg-primary/10"
+                                : idx % 2 === 0
+                                  ? "bg-background hover:bg-muted/20"
+                                  : "bg-muted/15 hover:bg-muted/25"
                             )}
                           >
-                            <td className="px-4 py-3">
+                            <td
+                              className={cn(
+                                "px-2 py-2 text-muted-foreground tabular-nums",
+                                selectedParticipantId === p.id && "border-l-4 border-l-primary pl-2"
+                              )}
+                            >
+                              {idx + 1}
+                            </td>
+                            <td className="px-3 py-2">
                               <span className="block truncate font-medium">
                                 {p.name} {p.surname}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground">
+                            <td className="px-3 py-2 text-muted-foreground">
                               {p.rentsMotorcycle ? (
                                 <span className="inline-flex w-fit shrink-0 rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                                   ninja 400
@@ -197,12 +355,7 @@ export default function EventParticipantsPage() {
                                 <span className="block truncate">{p.motorcycle}</span>
                               )}
                             </td>
-                            <td className="px-4 py-3">
-                              <span className="block truncate text-muted-foreground">
-                                {p.rentsMotorcycle ? "–" : p.capacity}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-2">
                               <span
                                 className={cn(
                                   "inline-flex rounded-lg px-2 py-0.5 text-xs font-medium capitalize",
@@ -212,19 +365,7 @@ export default function EventParticipantsPage() {
                                 {p.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <span
-                                className={cn(
-                                  "inline-flex rounded-lg px-2 py-0.5 text-xs font-medium",
-                                  (p as { oswiadczenia?: boolean }).oswiadczenia
-                                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                                    : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                                )}
-                              >
-                                {(p as { oswiadczenia?: boolean }).oswiadczenia ? "Dodane" : "Brak"}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 py-2">
                               <div
                                 className="flex items-center gap-2"
                                 onClick={(e) => e.stopPropagation()}
@@ -233,7 +374,7 @@ export default function EventParticipantsPage() {
                                   value={p.effectiveGroup}
                                   onChange={(e) => setParticipantGroup(p.id, e.target.value)}
                                   className={cn(
-                                    "h-8 w-[6.5rem] rounded-md border border-input bg-transparent px-2 py-1 text-xs font-medium",
+                                    "h-7 w-[6.5rem] rounded-md border border-input bg-transparent px-2 py-1 text-xs font-medium",
                                     "text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
                                     "cursor-pointer hover:bg-muted/50"
                                   )}
@@ -265,16 +406,21 @@ export default function EventParticipantsPage() {
                     </table>
                     </div>
                     <div className="flex flex-col gap-2 p-2 md:hidden">
-                      {groupParticipants.map((p) => (
+                      {groupParticipants.map((p, idx) => (
                         <div
                           key={p.id}
                           onClick={() => openDrawer(p.id)}
                           className={cn(
                             "flex flex-col gap-2 rounded-lg border border-border p-3 transition-colors",
-                            selectedParticipantId === p.id ? "bg-primary/5" : "active:bg-muted/50"
+                            selectedParticipantId === p.id
+                              ? "bg-primary/10 border-l-4 border-l-primary"
+                              : idx % 2 === 0
+                                ? "bg-background active:bg-muted/20"
+                                : "bg-muted/15 active:bg-muted/25"
                           )}
                         >
                           <div className="flex items-start justify-between gap-2">
+                            <span className="text-muted-foreground tabular-nums">{idx + 1}.</span>
                             <span className="font-medium">
                               {p.name} {p.surname}
                             </span>
@@ -293,20 +439,8 @@ export default function EventParticipantsPage() {
                                 ninja 400
                               </span>
                             ) : (
-                              <span>
-                                {p.motorcycle} · {p.capacity}
-                              </span>
+                              <span>{p.motorcycle}</span>
                             )}
-                            <span
-                              className={cn(
-                                "rounded-lg px-2 py-0.5 text-xs font-medium",
-                                (p as { oswiadczenia?: boolean }).oswiadczenia
-                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                              )}
-                            >
-                              {(p as { oswiadczenia?: boolean }).oswiadczenia ? "Dodane" : "Brak"}
-                            </span>
                           </div>
                           <div
                             className="mt-1 flex items-center gap-2"
@@ -350,6 +484,9 @@ export default function EventParticipantsPage() {
               </div>
             )
           })}
+            </div>
+          )
+          })}
         </div>
 
         {selectedParticipant && (
@@ -362,14 +499,15 @@ export default function EventParticipantsPage() {
             <aside
               className={cn(
                 "relative flex flex-col overflow-hidden bg-card transition-all duration-200",
-                "fixed inset-0 z-[60] flex rounded-none md:static md:z-auto md:inset-auto md:h-[min(70vh,32rem)] md:w-96 md:rounded-lg md:border md:border-border md:shadow-lg md:self-start",
+                "fixed inset-0 z-[60] flex rounded-none md:static md:z-auto md:inset-auto md:w-96 md:rounded-xl md:border md:border-border md:shadow-lg md:min-h-0",
+                "lg:self-stretch lg:mt-10",
                 isDrawerCollapsed ? "hidden md:flex md:w-14" : ""
               )}
             >
               <button
                 onClick={() => setIsDrawerCollapsed((v) => !v)}
                 className={cn(
-                  "absolute -left-4 top-1/2 z-10 hidden h-8 w-6 -translate-y-1/2 items-center justify-center rounded-l-lg border border-r-0 border-border bg-card shadow-sm transition-colors hover:bg-primary/10 hover:border-primary/20 lg:flex",
+                  "absolute -left-4 top-1/2 z-10 hidden h-8 w-6 -translate-y-1/2 items-center justify-center rounded-l-xl border border-r-0 border-border bg-card shadow-sm transition-colors hover:bg-primary/10 hover:border-primary/20 lg:flex",
                   "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 )}
                 title={isDrawerCollapsed ? "Rozwiń panel" : "Zwiń panel"}
@@ -382,7 +520,7 @@ export default function EventParticipantsPage() {
               </button>
               <div
                 className={cn(
-                  "flex h-14 shrink-0 items-center border-b border-border",
+                  "flex h-10 shrink-0 items-center border-b border-border bg-muted/30",
                   isDrawerCollapsed ? "flex-col justify-center gap-1 py-2" : "justify-between px-4"
                 )}
               >
@@ -420,30 +558,47 @@ export default function EventParticipantsPage() {
                 )}
               </div>
               {!isDrawerCollapsed && (
-                <div className="min-h-0 flex-1 space-y-6 overflow-auto p-4">
-                  <section>
+                <div className="min-h-0 flex-1 space-y-6 overflow-auto px-4 py-4">
+                  <section className="border-b border-border pb-4 last:border-0 last:pb-0">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <IdentificationCard className="size-4" />
-                      Dane osobowe
+                      <span>Dane osobowe</span>
+                      <span
+                        className={cn(
+                          "rounded-lg px-2 py-0.5 text-xs font-medium normal-case",
+                          getEffectiveGroup(selectedParticipant) === "listaRezerwowa"
+                            ? "bg-teal-500/15 text-teal-700 dark:text-teal-400"
+                            : "bg-primary/10 text-primary"
+                        )}
+                      >
+                        {GROUP_LABELS[getEffectiveGroup(selectedParticipant)] ??
+                          `Grupa ${getEffectiveGroup(selectedParticipant)}`}
+                      </span>
                     </h4>
                     <dl className="space-y-2 text-sm">
-                      <div>
-                        <dt className="text-muted-foreground">Imię i nazwisko</dt>
-                        <dd className="font-medium">
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Imię i nazwisko</dt>
+                        <dd className="text-right">
                           {selectedParticipant.name} {selectedParticipant.surname}
                         </dd>
                       </div>
-                      <div>
-                        <dt className="text-muted-foreground">Email</dt>
-                        <dd>{selectedParticipant.email}</dd>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Email</dt>
+                        <dd className="text-right">{selectedParticipant.email}</dd>
                       </div>
-                      <div>
-                        <dt className="text-muted-foreground">Nr tel</dt>
-                        <dd>{(selectedParticipant as { phone?: string }).phone ?? "–"}</dd>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Nr tel</dt>
+                        <dd className="text-right">{(selectedParticipant as { phone?: string }).phone ?? "–"}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Nr tel osoby bliskiej</dt>
+                        <dd className="text-right">
+                          {(selectedParticipant as { phoneBliskiej?: string }).phoneBliskiej ?? "–"}
+                        </dd>
                       </div>
                     </dl>
                   </section>
-                  <section>
+                  <section className="border-b border-border pb-4 last:border-0 last:pb-0">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <Motorcycle className="size-4" />
                       Motocykl
@@ -454,35 +609,91 @@ export default function EventParticipantsPage() {
                       )}
                     </h4>
                     <dl className="space-y-2 text-sm">
-                      <div>
-                        <dt className="text-muted-foreground">Pojazd</dt>
-                        <dd className="font-medium">{selectedParticipant.motorcycle}</dd>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Pojazd</dt>
+                        <dd className="text-right">
+                          {selectedParticipant.rentsMotorcycle ? "–" : selectedParticipant.motorcycle}
+                        </dd>
                       </div>
-                      <div>
-                        <dt className="text-muted-foreground">Opis</dt>
-                        <dd className="text-muted-foreground">
-                          Yamaha R6, rok 2019, modyfikacje: exhaust, ECU tune
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Opis</dt>
+                        <dd className="text-right text-muted-foreground">
+                          {selectedParticipant.rentsMotorcycle ? "–" : "tekst dodany przez uczestnika podczas rejestracji"}
                         </dd>
                       </div>
                     </dl>
                   </section>
-                  <section>
+                  <section className="border-b border-border pb-4 last:border-0 last:pb-0">
+                    <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <CurrencyCircleDollar className="size-4" />
+                      Płatności
+                    </h4>
+                    <dl className="space-y-2 text-sm">
+                      {(() => {
+                        const p = selectedParticipant
+                        const dni = (p as { dniObecnosci?: number }).dniObecnosci ?? eventTotalDays
+                        const obecnyWDniach = (p as { obecnyWDniach?: number[] }).obecnyWDniach
+                        const dayIndices = obecnyWDniach?.length
+                          ? obecnyWDniach
+                          : Array.from({ length: Math.min(dni, eventDays.length) }, (_, i) => i)
+                        const status = (p.status ?? "oczekuje") as ParticipantStatus
+                        return (
+                          <>
+                            {dayIndices.map((i) => {
+                              const date = eventDays[i]?.date ?? "–"
+                              return (
+                                <div key={i} className="flex justify-between items-center gap-2">
+                                  <dt className="shrink-0 text-muted-foreground">Uczestnictwo: {date}</dt>
+                                  <dd className="text-right">
+                                    <span
+                                      className={cn(
+                                        "inline-flex rounded-lg px-2 py-0.5 text-xs font-medium capitalize",
+                                        getStatusStyles(status)
+                                      )}
+                                    >
+                                      {status}
+                                    </span>
+                                  </dd>
+                                </div>
+                              )
+                            })}
+                            {p.rentsMotorcycle && (
+                              <div className="flex justify-between items-center gap-2">
+                                <dt className="shrink-0 text-muted-foreground">Wynajem motocykla</dt>
+                                <dd className="text-right">
+                                  <span
+                                    className={cn(
+                                      "inline-flex rounded-lg px-2 py-0.5 text-xs font-medium capitalize",
+                                      getStatusStyles(status)
+                                    )}
+                                  >
+                                    {status}
+                                  </span>
+                                </dd>
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </dl>
+                  </section>
+                  <section className="border-b border-border pb-4 last:border-0 last:pb-0">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <FileText className="size-4" />
                       Oświadczenia
                     </h4>
-                    <dl className="flex flex-col gap-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <dt className="text-muted-foreground">Regulamin</dt>
-                        <dd>
+                    <dl className="space-y-2 text-sm">
+                      <div className="flex justify-between items-center gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Regulamin</dt>
+                        <dd className="text-right">
                           <span className="inline-flex rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                             Zaakceptowano
                           </span>
                         </dd>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <dt className="text-muted-foreground">Zgoda na udział</dt>
-                        <dd>
+                      <div className="flex justify-between items-center gap-2">
+                        <dt className="shrink-0 text-muted-foreground">Zgoda na udział</dt>
+                        <dd className="text-right">
                           <span className="inline-flex rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                             Podpisana
                           </span>
@@ -511,6 +722,15 @@ export default function EventParticipantsPage() {
                     onClick={() => setIsDrawerCollapsed(false)}
                   >
                     <Motorcycle className="size-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Płatności"
+                    className="text-muted-foreground"
+                    onClick={() => setIsDrawerCollapsed(false)}
+                  >
+                    <CurrencyCircleDollar className="size-5" />
                   </Button>
                   <Button
                     variant="ghost"

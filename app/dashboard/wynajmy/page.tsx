@@ -65,27 +65,27 @@ export default function WynajmyPage() {
           <table className="w-full table-fixed text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="w-[20%] px-4 py-3 text-left font-medium">Motocykl</th>
-                  <th className="w-[10%] px-4 py-3 text-left font-medium">Statystyki</th>
-                  <th className="w-[14%] px-4 py-3 text-left font-medium">Przegląd</th>
-                  <th className="w-[14%] px-4 py-3 text-left font-medium">Ubezpieczenie</th>
-                  <th className="w-[12%] px-4 py-3 text-left font-medium">Status</th>
-                  <th className="w-[14%] px-4 py-3 text-right font-medium">Cena</th>
-                  <th className="w-[16%] px-4 py-3 text-right" />
+                  <th className="w-[20%] px-3 py-2 text-left font-medium">Motocykl</th>
+                  <th className="w-[10%] px-3 py-2 text-left font-medium">Statystyki</th>
+                  <th className="w-[14%] px-3 py-2 text-left font-medium">Przegląd</th>
+                  <th className="w-[14%] px-3 py-2 text-left font-medium">Ubezpieczenie</th>
+                  <th className="w-[12%] px-3 py-2 text-left font-medium">Status</th>
+                  <th className="w-[14%] px-3 py-2 text-right font-medium">Cena</th>
+                  <th className="w-[16%] px-3 py-2 text-right" />
                 </tr>
               </thead>
               <tbody>
                 {rentals.map((m) => (
-                  <tr key={m.id} className="border-b border-border last:border-0 transition-colors hover:bg-muted/30">
-                    <td className="px-4 py-3">
+                  <tr key={m.id} className="border-b border-border last:border-0 transition-colors even:bg-muted/40 hover:bg-muted/30">
+                    <td className="px-3 py-2">
                       <span className="block truncate font-medium">{m.name}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className="text-muted-foreground">
                         {m.rented}/{m.max}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className={cn(
                         "rounded-lg px-2 py-0.5 text-xs font-medium",
                         m.przeglad ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground"
@@ -93,7 +93,7 @@ export default function WynajmyPage() {
                         {formatDate(m.przeglad ?? null)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span className={cn(
                         "rounded-lg px-2 py-0.5 text-xs font-medium",
                         m.ubezpieczenie ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground"
@@ -101,7 +101,7 @@ export default function WynajmyPage() {
                         {formatDate(m.ubezpieczenie ?? null)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span
                         className={cn(
                           "inline-flex rounded-lg px-2 py-0.5 text-xs font-medium",
@@ -113,7 +113,7 @@ export default function WynajmyPage() {
                         {m.status === "gotowy" ? "Gotowy" : "Zawieszony"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       <span className="inline-flex w-28 items-center justify-end gap-1.5">
                         {editingId === m.id ? (
                           <>
@@ -133,7 +133,7 @@ export default function WynajmyPage() {
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-2 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {editingId === m.id ? (
                           <Button
