@@ -394,40 +394,39 @@ export default function DashboardEventsPage() {
                 <X className="size-4" weight="bold" />
               </Button>
             </div>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={linkModalEvent.url}
-                className="h-9 min-w-0 flex-1 truncate rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground"
-              />
-              <Button
-                size="sm"
-                variant={copied ? "default" : "outline"}
-                onClick={copyLink}
-                className={cn(
-                  "h-9 w-[7.5rem] shrink-0 justify-center",
-                  copied &&
-                    "bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600"
-                )}
-              >
-                {copied ? (
-                  <>
-                    <Check className="size-4" weight="bold" />
-                    Skopiowano
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="size-4" weight="bold" />
-                    Kopiuj link
-                  </>
-                )}
-              </Button>
+            <div className="mt-3">
+              <label className="text-xs font-medium text-muted-foreground">Kopiuj</label>
+              <div className="mt-1.5 flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={linkModalEvent.url}
+                  className="h-9 min-w-0 flex-1 truncate rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground"
+                />
+                <Button
+                  size="sm"
+                  variant={copied ? "default" : "outline"}
+                  onClick={copyLink}
+                  className={cn(
+                    "h-9 w-24 shrink-0 justify-center",
+                    copied &&
+                      "bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600"
+                  )}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="size-4" weight="bold" />
+                      Skopiowano
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon className="size-4" weight="bold" />
+                      Kopiuj
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-            <span className="mt-3 block text-xs text-muted-foreground">
-              Udostępnij ten link uczestnikom, aby mogli się zarejestrować na wydarzenie „
-              {linkModalEvent.name}”.
-            </span>
           </div>
         </>
       )}
