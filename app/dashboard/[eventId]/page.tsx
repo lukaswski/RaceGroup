@@ -28,6 +28,7 @@ type EventWithDays = (typeof eventsData)[0] & {
 type ParticipantStatus = "opłacony" | "oczekuje" | "gotówka" | "zaliczka"
 
 const GROUPS = ["A", "B", "C", "D", "listaRezerwowa"] as const
+type GroupKey = (typeof GROUPS)[number]
 const GROUP_LABELS: Record<string, string> = {
   A: "Grupa A",
   B: "Grupa B",
@@ -105,12 +106,21 @@ export default function EventParticipantsPage() {
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false)
   // Klucze "dayIdx-group" – rozwinięta grupa tylko dla danego dnia
   const [expandedGroupsByDay, setExpandedGroupsByDay] = useState<Set<string>>(new Set())
-  const [groupOverrides, setGroupOverrides] = useState<Record<string, string>>({})
+  const [groupOverrides, setGroupOverrides] = useState<Record<string, GroupKey>>({})
   const [centerAlertText, setCenterAlertText] = useState<string | null>(null)
   const alertTimerRef = useRef<number | null>(null)
 
-  const getEffectiveGroup = (p: (typeof participants)[0]) => groupOverrides[p.id] ?? p.group
-  const participantsWithGroup = participants.map((p) => ({ ...p, effectiveGroup: getEffectiveGroup(p) }))
+  const toGroupKey = (g: string): GroupKey => {
+    return (GROUPS as readonly string[]).includes(g) ? (g as GroupKey) : "listaRezerwowa"
+  }
+
+  const getEffectiveGroup = (p: (typeof participants)[0]): GroupKey =>
+    groupOverrides[p.id] ?? toGroupKey(p.group)
+
+  const participantsWithGroup = participants.map((p) => ({
+    ...p,
+    effectiveGroup: getEffectiveGroup(p),
+  }))
 
   const selectedParticipant = participants.find((p) => p.id === selectedParticipantId)
 
@@ -134,7 +144,7 @@ export default function EventParticipantsPage() {
     }
   }, [participants, selectedParticipantId])
 
-  const setParticipantGroup = (participantId: string, newGroup: string) => {
+  const setParticipantGroup = (participantId: string, newGroup: GroupKey) => {
     setGroupOverrides((prev) => ({ ...prev, [participantId]: newGroup }))
     showCenterAlert("Grupa zmieniona")
   }
@@ -471,7 +481,7 @@ export default function EventParticipantsPage() {
                               >
                                 <select
                                   value={p.effectiveGroup}
-                                  onChange={(e) => setParticipantGroup(p.id, e.target.value)}
+                                  onChange={(e) => setParticipantGroup(p.id, toGroupKey(e.target.value))}
                                   className={cn(
                                     "h-7 w-[6.5rem] rounded-md border border-input bg-transparent px-2 py-1 text-xs font-medium",
                                     "text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
@@ -556,7 +566,7 @@ export default function EventParticipantsPage() {
                             <span className="shrink-0 text-sm text-muted-foreground">Grupa</span>
                             <select
                               value={p.effectiveGroup}
-                              onChange={(e) => setParticipantGroup(p.id, e.target.value)}
+                              onChange={(e) => setParticipantGroup(p.id, toGroupKey(e.target.value))}
                               className={cn(
                                 "h-9 flex-1 min-w-0 rounded-md border border-input bg-transparent px-3 py-2 text-sm font-medium",
                                 "text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
