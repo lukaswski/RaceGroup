@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import {
   CalendarBlank,
   UserCircle,
@@ -20,10 +20,11 @@ import { cn } from "@/lib/utils"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const themeReady = mounted && (resolvedTheme === "light" || resolvedTheme === "dark")
 
   useEffect(() => {
     setMounted(true)
@@ -145,17 +146,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <List className="size-5" weight="bold" />
             </Button>
           </div>
-          <div className="flex h-6 w-[72px] items-center gap-2" suppressHydrationWarning>
-            {mounted && (
+          <div className="flex h-6 w-[72px] items-center gap-2">
+            {themeReady ? (
               <>
-                <Sun className="size-4 shrink-0 text-muted-foreground" weight={resolvedTheme === "light" ? "fill" : "regular"} />
+                <Sun
+                  className="size-4 shrink-0 text-muted-foreground"
+                  weight={resolvedTheme === "light" ? "fill" : "regular"}
+                />
                 <Switch
                   checked={resolvedTheme === "dark"}
                   onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
                   title="Przełącz motyw: jasny / ciemny"
                 />
-                <Moon className="size-4 shrink-0 text-muted-foreground" weight={resolvedTheme === "dark" ? "fill" : "regular"} />
+                <Moon
+                  className="size-4 shrink-0 text-muted-foreground"
+                  weight={resolvedTheme === "dark" ? "fill" : "regular"}
+                />
               </>
+            ) : (
+              // Stały placeholder, żeby SSR/CSR miały ten sam układ.
+              <div className="h-6 w-[72px]" aria-hidden="true" />
             )}
           </div>
         </header>

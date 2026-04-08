@@ -1,8 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { CalendarBlank } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import eventsData from "@/data/events.json"
 
 const inputClass =
   "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-0 focus:border-primary/50"
@@ -18,6 +20,7 @@ const DAYS_CONFIG = [
   { id: 2, label: "Dzień 2", date: "13.06", price: 560 },
   { id: 3, label: "Dzień 3", date: "14.06", price: 300 },
 ] as const
+const PRICE_FROM_PER_DAY = 560
 const PACKAGE_DISCOUNT = 150 // zł zniżki za wszystkie 3 dni
 
 const EVENT_HEADER = {
@@ -29,6 +32,7 @@ const EVENT_HEADER = {
 export default function FormularzRejestracjiPage() {
   const eventName = EVENT_HEADER.name
 
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [selectedDays, setSelectedDays] = useState<[boolean, boolean, boolean]>([false, false, false])
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -105,6 +109,58 @@ export default function FormularzRejestracjiPage() {
                 <p className="mt-3 text-xs text-muted-foreground">
                   Organizator: <span className="font-medium text-foreground">{EVENT_HEADER.organizer}</span>
                 </p>
+              </section>
+
+              <section className="border-b border-border bg-background px-4 py-5 sm:px-6 sm:py-6">
+                <div className="flex items-end justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Wydarzenia organizatora
+                    </p>
+                    <h2 className="text-sm font-semibold text-foreground">{EVENT_HEADER.organizer}</h2>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {(eventsData as Array<{
+                    id: string
+                    name: string
+                    date: string
+                    participants?: number
+                    maxCapacity?: number
+                    listaRezerwowa?: number
+                  }>).map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      aria-pressed={selectedEventId === ev.id}
+                      onClick={() => setSelectedEventId(ev.id)}
+                      className={cn(
+                        "w-full text-left rounded-xl border p-3 shadow-sm",
+                        "transition-colors",
+                        selectedEventId === ev.id
+                          ? "border-primary/60 bg-primary/10 ring-2 ring-primary/25"
+                          : "border-border bg-card/60 hover:bg-card"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">{ev.name}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarBlank className="size-4" weight="bold" />
+                              {ev.date}
+                            </span>
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                              od {PRICE_FROM_PER_DAY}/dzień
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </section>
 
               <section className="grid gap-4 bg-muted/20 p-4 sm:p-6 sm:gap-5">

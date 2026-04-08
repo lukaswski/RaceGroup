@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react"
 import { useRouter } from "next/navigation"
-import { CaretRight, CaretDown, Check, Link as LinkIcon, Plus, X } from "@phosphor-icons/react"
+import { CaretRight, CaretDown, LinkSimple, Plus } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import eventsData from "@/data/events.json"
@@ -22,32 +22,8 @@ type EventWithDays = (typeof eventsData)[0] & {
 
 export default function DashboardEventsPage() {
   const router = useRouter()
-  const [copied, setCopied] = useState(false)
-  const [linkModalEvent, setLinkModalEvent] = useState<{ name: string; url: string } | null>(null)
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null)
   const [expandedMobileId, setExpandedMobileId] = useState<string | null>(null)
-
-  const openLinkModal = (e: React.MouseEvent, event: EventWithDays) => {
-    e.stopPropagation()
-    const url = (event as { formularzRejestracyjny?: string }).formularzRejestracyjny
-    if (url) setLinkModalEvent({ name: event.name, url })
-  }
-
-  const closeLinkModal = () => {
-    setLinkModalEvent(null)
-    setCopied(false)
-  }
-
-  const copyLink = async () => {
-    if (!linkModalEvent) return
-    try {
-      await navigator.clipboard.writeText(linkModalEvent.url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
-    } catch {
-      setCopied(false)
-    }
-  }
 
   const toggleExpandDesktop = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation()
@@ -137,18 +113,6 @@ export default function DashboardEventsPage() {
                   </td>
                   <td className="px-3 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">
-                      {(event as { formularzRejestracyjny?: string }).formularzRejestracyjny ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => openLinkModal(e, event)}
-                        >
-                          link rej.
-                          <LinkIcon className="size-4" weight="bold" />
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">–</span>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -253,7 +217,6 @@ export default function DashboardEventsPage() {
       {(eventsData as EventWithDays[]).map((event) => {
         const isExpanded = expandedMobileId === event.id
         const days = event.days ?? []
-        const hasForm = !!(event as { formularzRejestracyjny?: string }).formularzRejestracyjny
         return (
           <div
             key={event.id}
@@ -307,17 +270,6 @@ export default function DashboardEventsPage() {
                 Szczegóły
                 <CaretRight className="size-4" weight="bold" />
               </Button>
-              {hasForm && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 min-w-[8rem]"
-                  onClick={(e) => openLinkModal(e, event as EventWithDays)}
-                >
-                  link rej.
-                  <LinkIcon className="size-4" weight="bold" />
-                </Button>
-              )}
             </div>
 
             {isExpanded && (
@@ -371,73 +323,23 @@ export default function DashboardEventsPage() {
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
-      {linkModalEvent && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-            onClick={closeLinkModal}
-            aria-hidden="true"
-          />
-          <div
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h3 className="text-sm font-semibold">Link do wydarzenia</h3>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={closeLinkModal}
-                className="shrink-0"
-                title="Zamknij"
-              >
-                <X className="size-4" weight="bold" />
-              </Button>
-            </div>
-            <div className="mt-3">
-              <label className="text-xs font-medium text-muted-foreground">Kopiuj</label>
-              <div className="mt-1.5 flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={linkModalEvent.url}
-                  className="h-9 min-w-0 flex-1 truncate rounded-md border border-input bg-muted/50 px-3 text-sm text-muted-foreground"
-                />
-                <Button
-                  size="sm"
-                  variant={copied ? "default" : "outline"}
-                  onClick={copyLink}
-                  className={cn(
-                    "h-9 w-24 shrink-0 justify-center",
-                    copied &&
-                      "bg-emerald-600 text-white hover:bg-emerald-600 hover:text-white dark:bg-emerald-600 dark:hover:bg-emerald-600"
-                  )}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="size-4" weight="bold" />
-                      Skopiowano
-                    </>
-                  ) : (
-                    <>
-                      <LinkIcon className="size-4" weight="bold" />
-                      Kopiuj
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
       <ResponsiveTableShell
         title="Wydarzenia"
         actions={
-          <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/nowe-wydarzenie")}>
-            <Plus className="size-4" weight="bold" />
-            Dodaj wydarzenie
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/dashboard/nowe-wydarzenie")}
+            >
+              <Plus className="size-4" weight="bold" />
+              Dodaj wydarzenie
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push("/formularzRejestracji")}>
+              <LinkSimple className="size-4" weight="bold" />
+              Link do rejestracji
+            </Button>
+          </div>
         }
         desktopTable={desktopTable}
         mobileList={mobileList}

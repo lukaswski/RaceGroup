@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 import {
@@ -36,6 +36,53 @@ const GROUP_LABELS: Record<string, string> = {
   listaRezerwowa: "Rezerwa",
 }
 
+type LapTimeRange = { minSeconds: number; maxSeconds: number }
+const LAP_TIME_RANGES: Partial<Record<(typeof GROUPS)[number], LapTimeRange>> = {
+  A: { minSeconds: 105, maxSeconds: 110 }, // 1:45–1:50
+  B: { minSeconds: 110, maxSeconds: 125 }, // 1:50–2:05
+  C: { minSeconds: 125, maxSeconds: 140 }, // 2:05–2:20
+  D: { minSeconds: 140, maxSeconds: 150 }, // 2:20–2:30
+}
+
+function clampInt(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, Math.trunc(n)))
+}
+
+function toSecondsLabel(totalSeconds: number) {
+  const s = clampInt(totalSeconds, 0, 60 * 60)
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${String(sec).padStart(2, "0")}`
+}
+
+function stableUnitRandom(seed: string) {
+  // Deterministyczne pseudo-losowanie 0..1 na podstawie stringa (bez zależności).
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  // 0..1 (wykorzystujemy 24 bity dla stabilności)
+  return ((h >>> 0) & 0xffffff) / 0x1000000
+}
+
+function getLapTimeLabel(args: {
+  participantId: string
+  effectiveGroup: (typeof GROUPS)[number]
+  eventDayIndex: number
+}) {
+  const range = LAP_TIME_RANGES[args.effectiveGroup]
+  if (!range) return "brak"
+
+  const rMissing = stableUnitRandom(`lap-missing:${args.participantId}:${args.eventDayIndex}`)
+  if (rMissing < 0.18) return "brak"
+
+  const r = stableUnitRandom(`lap:${args.participantId}:${args.eventDayIndex}:${args.effectiveGroup}`)
+  const seconds =
+    range.minSeconds + Math.round(r * (range.maxSeconds - range.minSeconds))
+  return toSecondsLabel(seconds)
+}
+
 export default function EventParticipantsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -59,24 +106,43 @@ export default function EventParticipantsPage() {
   // Klucze "dayIdx-group" – rozwinięta grupa tylko dla danego dnia
   const [expandedGroupsByDay, setExpandedGroupsByDay] = useState<Set<string>>(new Set())
   const [groupOverrides, setGroupOverrides] = useState<Record<string, string>>({})
+  const [centerAlertText, setCenterAlertText] = useState<string | null>(null)
+  const alertTimerRef = useRef<number | null>(null)
 
   const getEffectiveGroup = (p: (typeof participants)[0]) => groupOverrides[p.id] ?? p.group
   const participantsWithGroup = participants.map((p) => ({ ...p, effectiveGroup: getEffectiveGroup(p) }))
 
   const selectedParticipant = participants.find((p) => p.id === selectedParticipantId)
 
+  const showCenterAlert = (text: string) => {
+    setCenterAlertText(text)
+    if (alertTimerRef.current) window.clearTimeout(alertTimerRef.current)
+    alertTimerRef.current = window.setTimeout(() => setCenterAlertText(null), 1200)
+  }
+
+  useEffect(() => {
+    // Na desktopie/tablecie panel boczny ma być zawsze otwarty.
+    // Ustawiamy domyślnie pierwszego uczestnika tylko dla szerokich ekranów,
+    // żeby na mobile nie otwierać drawer'a automatycznie.
+    if (!selectedParticipantId && participants.length > 0) {
+      const mq = window.matchMedia?.("(min-width: 768px)")
+      if (mq?.matches) setSelectedParticipantId(participants[0]!.id)
+    }
+
+    return () => {
+      if (alertTimerRef.current) window.clearTimeout(alertTimerRef.current)
+    }
+  }, [participants, selectedParticipantId])
+
   const setParticipantGroup = (participantId: string, newGroup: string) => {
     setGroupOverrides((prev) => ({ ...prev, [participantId]: newGroup }))
+    showCenterAlert("Grupa zmieniona")
   }
 
   const openDrawer = (participantId: string) => setSelectedParticipantId(participantId)
   const closeDrawer = () => setSelectedParticipantId(null)
 
   const eventTotalDays = Math.max(eventDays.length, 1)
-  const getObecnosc = (p: (typeof participants)[0]) => {
-    const dni = (p as { dniObecnosci?: number }).dniObecnosci ?? eventTotalDays
-    return `${Math.min(dni, eventTotalDays)}/${eventTotalDays}`
-  }
   const isPresentOnDay = (p: (typeof participants)[0], eventDayIndex: number) => {
     const obecnyWDniach = (p as { obecnyWDniach?: number[] }).obecnyWDniach
     const dni = (p as { dniObecnosci?: number }).dniObecnosci ?? eventTotalDays
@@ -129,6 +195,7 @@ export default function EventParticipantsPage() {
       "Email",
       "Telefon",
       "Motocykl",
+      "Czas okrążenia",
       "Status",
       "Podpis",
     ]
@@ -139,6 +206,11 @@ export default function EventParticipantsPage() {
       (p as { email?: string }).email ?? "",
       (p as { phone?: string }).phone ?? "",
       (p as { rentsMotorcycle?: boolean }).rentsMotorcycle ? "" : p.motorcycle ?? "",
+      getLapTimeLabel({
+        participantId: p.id,
+        effectiveGroup: getEffectiveGroup(p) as (typeof GROUPS)[number],
+        eventDayIndex: dayIndex ?? 0,
+      }),
       p.status ?? "",
       "",
     ]
@@ -148,7 +220,7 @@ export default function EventParticipantsPage() {
       const g = getEffectiveGroup(p)
       if (g !== lastGroup) {
         lastGroup = g
-        rows.push([GROUP_LABELS[g] ?? g, "", "", "", "", "", "", ""])
+        rows.push([GROUP_LABELS[g] ?? g, "", "", "", "", "", "", "", ""])
       }
       rows.push(rowForParticipant(p))
     }
@@ -174,6 +246,23 @@ export default function EventParticipantsPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
+      {centerAlertText && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none"
+          aria-live="polite"
+          aria-atomic="true"
+          role="status"
+        >
+          <div
+            className={cn(
+              "translate-y-[-2.5rem] rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-lg backdrop-blur",
+              "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+            )}
+          >
+            {centerAlertText}
+          </div>
+        </div>
+      )}
       <div className="mb-4 flex shrink-0 flex-col gap-3">
         <Link
           href="/dashboard"
@@ -313,10 +402,11 @@ export default function EventParticipantsPage() {
                       <thead>
                         <tr className="border-b border-border bg-muted/30">
                           <th className="w-[6%] px-2 py-2 text-left font-medium">Lp.</th>
-                          <th className="w-[26%] px-3 py-2 text-left font-medium">Uczestnik</th>
-                          <th className="w-[26%] px-3 py-2 text-left font-medium">Motocykl</th>
-                          <th className="w-[16%] px-3 py-2 text-left font-medium">Status</th>
-                          <th className="w-[26%] px-3 py-2" />
+                          <th className="w-[24%] px-3 py-2 text-left font-medium">Uczestnik</th>
+                          <th className="w-[22%] px-3 py-2 text-left font-medium">Motocykl</th>
+                          <th className="w-[10%] px-3 py-2 text-left font-medium">Czas okrążenia</th>
+                          <th className="w-[14%] px-3 py-2 text-left font-medium">Status</th>
+                          <th className="w-[24%] px-3 py-2" />
                         </tr>
                       </thead>
                       <tbody>
@@ -354,6 +444,15 @@ export default function EventParticipantsPage() {
                               ) : (
                                 <span className="block truncate">{p.motorcycle}</span>
                               )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="tabular-nums text-muted-foreground">
+                                {getLapTimeLabel({
+                                  participantId: p.id,
+                                  effectiveGroup: p.effectiveGroup,
+                                  eventDayIndex: currentEventDayIndex,
+                                })}
+                              </span>
                             </td>
                             <td className="px-3 py-2">
                               <span
@@ -441,6 +540,14 @@ export default function EventParticipantsPage() {
                             ) : (
                               <span>{p.motorcycle}</span>
                             )}
+                            <span className="text-muted-foreground/50">•</span>
+                            <span className="tabular-nums">
+                              {getLapTimeLabel({
+                                participantId: p.id,
+                                effectiveGroup: p.effectiveGroup,
+                                eventDayIndex: currentEventDayIndex,
+                              })}
+                            </span>
                           </div>
                           <div
                             className="mt-1 flex items-center gap-2"
@@ -489,21 +596,25 @@ export default function EventParticipantsPage() {
           })}
         </div>
 
-        {selectedParticipant && (
-          <>
+        <>
+          {selectedParticipant && (
             <div
               className="fixed inset-0 z-[55] bg-black/50 backdrop-blur-sm md:hidden"
               onClick={closeDrawer}
               aria-hidden="true"
             />
-            <aside
-              className={cn(
-                "relative flex flex-col overflow-hidden bg-card transition-all duration-200",
-                "fixed inset-0 z-[60] flex rounded-none md:static md:z-auto md:inset-auto md:w-96 md:rounded-xl md:border md:border-border md:shadow-lg md:min-h-0",
-                "lg:self-stretch lg:mt-10",
-                isDrawerCollapsed ? "hidden md:flex md:w-14" : ""
-              )}
-            >
+          )}
+          <aside
+            className={cn(
+              "relative flex flex-col overflow-hidden bg-card transition-all duration-200",
+              // mobile: tylko gdy wybrano uczestnika
+              selectedParticipant ? "fixed inset-0 z-[60] flex rounded-none md:static md:z-auto" : "hidden md:flex",
+              // desktop/tablet: zawsze widoczne
+              "md:inset-auto md:w-96 md:rounded-xl md:border md:border-border md:shadow-lg md:min-h-0",
+              "lg:self-stretch lg:mt-10",
+              isDrawerCollapsed ? "md:w-14" : ""
+            )}
+          >
               <button
                 onClick={() => setIsDrawerCollapsed((v) => !v)}
                 className={cn(
@@ -534,7 +645,13 @@ export default function EventParticipantsPage() {
                     >
                       <CaretRight className="size-4" />
                     </Button>
-                    <Button variant="ghost" size="icon-xs" onClick={closeDrawer} title="Zamknij">
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={closeDrawer}
+                      title="Zamknij"
+                      className="md:hidden"
+                    >
                       <X className="size-4" />
                     </Button>
                   </>
@@ -550,14 +667,20 @@ export default function EventParticipantsPage() {
                       >
                         <CaretLeft className="size-4" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" onClick={closeDrawer} title="Zamknij">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={closeDrawer}
+                        title="Zamknij"
+                        className="md:hidden"
+                      >
                         <X className="size-4" />
                       </Button>
                     </div>
                   </>
                 )}
               </div>
-              {!isDrawerCollapsed && (
+              {!isDrawerCollapsed && selectedParticipant && (
                 <div className="min-h-0 flex-1 space-y-6 overflow-auto px-4 py-4">
                   <section className="border-b border-border pb-4 last:border-0 last:pb-0">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -752,9 +875,13 @@ export default function EventParticipantsPage() {
                   </Button>
                 </nav>
               )}
+              {!isDrawerCollapsed && !selectedParticipant && (
+                <div className="min-h-0 flex-1 p-6 text-sm text-muted-foreground hidden md:block">
+                  Wybierz uczestnika z listy, aby zobaczyć szczegóły.
+                </div>
+              )}
             </aside>
-          </>
-        )}
+        </>
       </div>
     </div>
   )
